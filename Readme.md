@@ -83,6 +83,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Contact
 Provide contact information for people who want to reach out to you. For example:
 
-- Email: your-email@example.com
-- GitHub: [your-username](https://github.com/your-username)
-- LinkedIn: [Your Name](https://www.linkedin.com/in/your-profile)
+- Email: rayyanahmed265@yahoo.com
+- GitHub: [Rayyan 9477](https://github.com/Rayyan9477)
+- LinkedIn: [Rayyan Ahmed](https://www.linkedin.com/in/rayyan-ahmed9477/)
