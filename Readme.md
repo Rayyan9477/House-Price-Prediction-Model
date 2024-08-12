@@ -75,10 +75,14 @@ Guidelines for contributing to your project. Explain how others can contribute, 
     ```
 5. Open a pull request.
 
-## License
-Specify the license under which your project is distributed. For example:
+   
+## Video Demonstration
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+Watch the video demonstration of the project:
+
+![House Price Prediction Demo](https://github.com/Rayyan9477/House-Price-Prediction-Model/blob/main/video.mp4)
+
+Click the link to watch demo.
 
 ## Contact
 Provide contact information for people who want to reach out to you. For example:
