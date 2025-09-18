@@ -1,0 +1,22 @@
+# Flake8 configuration file
+[flake8]
+max-line-length = 127
+ignore = 
+    E501,  # line too long
+    W503,  # line break before binary operator
+    E203,  # whitespace before ':'
+    F401,  # imported but unused
+exclude = 
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    build,
+    dist,
+    .eggs,
+    *.egg-info,
+    .pytest_cache
+max-complexity = 10
+per-file-ignores =
+    tests/*:F401,F811
+    __init__.py:F401
