@@ -8,7 +8,8 @@ import numpy as np
 # Add the parent directory to the path so we can import app
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app import app, load_and_train_model
+# Import app modules after path modification
+from app import app, load_and_train_model  # noqa: E402
 
 class TestHousePricePredictionAPI(unittest.TestCase):
     

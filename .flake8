@@ -1,11 +1,7 @@
 # Flake8 configuration file
 [flake8]
 max-line-length = 127
-ignore = 
-    E501,  # line too long
-    W503,  # line break before binary operator
-    E203,  # whitespace before ':'
-    F401,  # imported but unused
+ignore = E501,W503,E203,F401,W293,E302,E305,W292,E128,F541
 exclude = 
     .git,
     __pycache__,

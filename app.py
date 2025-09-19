@@ -1,8 +1,5 @@
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify
 import pandas as pd
-import numpy as np
-import pickle
-import os
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -80,7 +77,7 @@ def load_and_train_model():
     mse = mean_squared_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
 
-    print(f"Model trained successfully!")
+    print("Model trained successfully!")
     print(f"Mean Absolute Error (MAE): {mae}")
     print(f"Mean Squared Error (MSE): {mse}")
     print(f"R-squared (R2): {r2}")
@@ -235,6 +232,7 @@ def retrain_model():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 if __name__ == '__main__':
     # Load and train the model on startup
     print("Loading and training model...")
@@ -243,6 +241,8 @@ if __name__ == '__main__':
         print("Model loaded successfully!")
     except Exception as e:
         print(f"Error loading model: {e}")
-    
+
     # Run the Flask app
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Use debug=False for production security
+    # Bind to 0.0.0.0 for Docker containerization
+    app.run(host='0.0.0.0', port=5000, debug=False)  # nosec
