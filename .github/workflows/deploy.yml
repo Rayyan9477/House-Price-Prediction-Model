@@ -1,0 +1,98 @@
+name: Build and Deploy to Docker Hub
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+    types: [closed]
+
+jobs:
+  build-and-deploy:
+    if: github.event.pull_request.merged == true || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Run security scan
+      uses: docker/scout-action@v1
+      with:
+        command: cves
+        image: ${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction:latest
+        only-severities: critical,high
+        exit-code: false
+    
+    - name: Deploy notification
+      if: success()
+      run: |
+        echo "Docker image successfully built and pushed!"
+        echo "Image: ${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction:latest"
+        echo "Tags: ${{ steps.meta.outputs.tags }}"
+
+  send-notification:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Send email notification
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.gmail.com
+        server_port: 587
+        username: ${{ secrets.EMAIL_USERNAME }}
+        password: ${{ secrets.EMAIL_PASSWORD }}
+        subject: "CI/CD Pipeline Status - House Price Prediction"
+        to: i222489@nu.edu.pk
+        from: ${{ secrets.EMAIL_USERNAME }}
+        body: |
+          CI/CD Pipeline Execution Report
+          
+          Repository: ${{ github.repository }}
+          Branch: ${{ github.ref_name }}
+          Commit: ${{ github.sha }}
+          
+          Build Status: ${{ needs.build-and-deploy.result }}
+          
+          ${{ needs.build-and-deploy.result == 'success' && 
+              'The application has been successfully built and deployed to Docker Hub!' || 
+              'The build process encountered an error. Please check the logs for details.' }}
+          
+          Workflow URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          
+          Timestamp: ${{ github.event.head_commit.timestamp }}
+          
+          This is an automated message from GitHub Actions.

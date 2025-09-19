@@ -1,0 +1,18 @@
+# Flake8 configuration file
+[flake8]
+max-line-length = 127
+ignore = E501,W503,E203,F401,W293,E302,E305,W292,E128,F541
+exclude = 
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    build,
+    dist,
+    .eggs,
+    *.egg-info,
+    .pytest_cache
+max-complexity = 10
+per-file-ignores =
+    tests/*:F401,F811
+    __init__.py:F401
