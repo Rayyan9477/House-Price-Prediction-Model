@@ -31,7 +31,7 @@ Configure the following secrets in Settings → Secrets and variables → Action
 
 | Secret Name | Description | How to Get |
 |-------------|-------------|------------|
-| `DOCKER_HUB_USERNAME` | Your Docker Hub username | Your Docker Hub account username |
+| `DOCKER_HUB_USERNAME` | Your Docker Hub username | rayyan9477 |
 | `DOCKER_HUB_ACCESS_TOKEN` | Docker Hub access token | Generate in Docker Hub → Account Settings → Security |
 | `EMAIL_USERNAME` | SMTP email address | Your Gmail address |
 | `EMAIL_PASSWORD` | App-specific password | Generate in Google Account → Security → App passwords |

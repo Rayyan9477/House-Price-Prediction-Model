@@ -76,7 +76,7 @@ jobs:
         username: ${{ secrets.EMAIL_USERNAME }}
         password: ${{ secrets.EMAIL_PASSWORD }}
         subject: "CI/CD Pipeline Status - House Price Prediction"
-        to: rayyanahmed265@yahoo.com
+        to: i222489@nu.edu.pk
         from: ${{ secrets.EMAIL_USERNAME }}
         body: |
           CI/CD Pipeline Execution Report
