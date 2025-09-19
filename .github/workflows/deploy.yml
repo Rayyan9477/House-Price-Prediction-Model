@@ -68,31 +68,114 @@ jobs:
     if: always()
     
     steps:
-    - name: Send email notification
-      uses: dawidd6/action-send-mail@v3
+    - name: Create GitHub Issue for Pipeline Status
+      uses: actions/github-script@v7
       with:
-        server_address: smtp.gmail.com
-        server_port: 587
-        username: ${{ secrets.EMAIL_USERNAME }}
-        password: ${{ secrets.EMAIL_PASSWORD }}
-        subject: "CI/CD Pipeline Status - House Price Prediction"
-        to: i222489@nu.edu.pk
-        from: ${{ secrets.EMAIL_USERNAME }}
-        body: |
-          CI/CD Pipeline Execution Report
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const status = '${{ needs.build-and-deploy.result }}';
+          const statusEmoji = status === 'success' ? '✅' : '❌';
           
-          Repository: ${{ github.repository }}
-          Branch: ${{ github.ref_name }}
-          Commit: ${{ github.sha }}
+          const title = `CI/CD Pipeline ${status.toUpperCase()} - ${new Date().toISOString().split('T')[0]}`;
           
-          Build Status: ${{ needs.build-and-deploy.result }}
+          const body = `
+          ## ${statusEmoji} CI/CD Pipeline Execution Report
           
-          ${{ needs.build-and-deploy.result == 'success' && 
-              'The application has been successfully built and deployed to Docker Hub!' || 
-              'The build process encountered an error. Please check the logs for details.' }}
+          | Field | Value |
+          |-------|-------|
+          | **Repository** | \`${{ github.repository }}\` |
+          | **Branch** | \`${{ github.ref_name }}\` |
+          | **Commit** | \`${{ github.sha }}\` |
+          | **Status** | **${status.toUpperCase()}** |
+          | **Workflow** | [View Details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+          | **Timestamp** | \`${{ github.event.head_commit.timestamp }}\` |
           
-          Workflow URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ### Result Details
+          ${status === 'success' ? 
+            '🎉 **Success!** The application has been successfully built and deployed to Docker Hub!' : 
+            '🚨 **Failed!** The build process encountered an error. Please check the logs for details.'}
           
-          Timestamp: ${{ github.event.head_commit.timestamp }}
+          ### Docker Hub
+          ${status === 'success' ? 
+            'The new image has been pushed to: \`rayyan9477/house-price-prediction:latest\`' : 
+            'Docker deployment was not completed due to build failure.'}
           
-          This is an automated message from GitHub Actions.
+          ---
+          
+          **Note for @Rayyan9477**: This issue was automatically created to notify you of the CI/CD pipeline status.
+          You can close this issue once you've reviewed the results.
+          
+          *This is an automated notification from GitHub Actions.*
+          `;
+          
+          // Create the issue
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: title,
+            body: body,
+            labels: [
+              'ci-cd',
+              'automation',
+              status === 'success' ? 'deployment-success' : 'deployment-failed'
+            ],
+            assignees: ['Rayyan9477']
+          });
+    
+    - name: Create Summary Report
+      run: |
+        echo "## 📊 CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+        echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Repository | \`${{ github.repository }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Status | **${{ needs.build-and-deploy.result }}** |" >> $GITHUB_STEP_SUMMARY
+        echo "| Timestamp | \`${{ github.event.head_commit.timestamp }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ needs.build-and-deploy.result }}" == "success" ]; then
+          echo "✅ **Success!** The application has been successfully built and deployed to Docker Hub!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🐳 **Docker Image**: \`rayyan9477/house-price-prediction:latest\`" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Failed!** The build process encountered an error. Please check the logs for details." >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "🔗 [View Full Workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📧 **Notification**: A GitHub issue has been created with the pipeline status details." >> $GITHUB_STEP_SUMMARY
+    
+    - name: Comment on Related Pull Request (if exists)
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const status = '${{ needs.build-and-deploy.result }}';
+          const statusEmoji = status === 'success' ? '✅' : '❌';
+          
+          const comment = `
+          ## ${statusEmoji} CI/CD Pipeline ${status.toUpperCase()}
+          
+          **Deployment Status**: ${status === 'success' ? 
+            'Successfully deployed to Docker Hub! 🎉' : 
+            'Deployment failed. Please check the logs. 🚨'}
+          
+          **Details**:
+          - Branch: \`${{ github.ref_name }}\`
+          - Commit: \`${{ github.sha }}\`
+          - Workflow: [View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          ${status === 'success' ? '- Docker Image: `rayyan9477/house-price-prediction:latest`' : ''}
+          
+          *Automated comment from CI/CD pipeline*
+          `;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
