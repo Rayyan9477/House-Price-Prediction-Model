@@ -21,3 +21,4 @@ downloads/
 eggs/
 .eggs/
 lib/
+.pytest_cache/
