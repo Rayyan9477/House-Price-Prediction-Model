@@ -1,8 +1,17 @@
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Large model files (use parts instead)
+house_price_model.pkl
+
+# But keep the model parts
+!house_price_model.pkl.part*
+!model_parts.info
+
 # C extensions
 *.so
+
 # Distribution / packaging
 .Python
 build/

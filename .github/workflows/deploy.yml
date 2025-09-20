@@ -2,9 +2,9 @@ name: Build and Deploy to Docker Hub
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ master ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ master ]
     types: [opened, synchronize, reopened, closed]
 
 permissions:
@@ -144,10 +144,10 @@ jobs:
           
           ---
           
-          **Note for @Rayyan9477**: This issue was automatically created to notify you of the CI/CD pipeline status.
-          You can close this issue once you've reviewed the results.
-          
-          *This is an automated notification from GitHub Actions.*
+          **Note for Administrator (@Rayyan9477)**: This issue was automatically created to notify the administrator of the CI/CD pipeline status as per project requirements.
+          You can close this issue once you've reviewed the deployment results.
+
+          *This is an automated notification email-alternative from GitHub Actions CI/CD pipeline.*
           `;
           
           // Create the issue
