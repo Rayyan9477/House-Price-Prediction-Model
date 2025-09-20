@@ -27,7 +27,7 @@ The CI/CD pipeline follows a three-branch strategy with automated workflows:
 
 ```
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│     dev     │───▶│    test     │───▶│   master    │───▶│ Docker Hub  │
+│     dev     │───▶│    test     │───▶│    main     │───▶│ Docker Hub  │
 │             │    │             │    │             │    │             │
 │ Code Quality│    │ Unit Testing│    │ Deployment  │    │ Container   │
 │ Check       │    │ Coverage    │    │ Email Alert │    │ Registry    │
@@ -52,7 +52,7 @@ The CI/CD pipeline follows a three-branch strategy with automated workflows:
   - Code coverage analysis
 - **Protection**: Requires successful test completion
 
-### 3. Master Branch (`master`/`main`)
+### 3. Main Branch (`main`)
 - **Purpose**: Production-ready code
 - **Triggers**:
   - Docker image build and push to Docker Hub
@@ -80,7 +80,7 @@ The CI/CD pipeline follows a three-branch strategy with automated workflows:
 - Flask application startup testing
 
 ### 3. Deployment Workflow (`.github/workflows/deploy.yml`)
-**Trigger**: Push to `master` branch or merged PR to `master`
+**Trigger**: Push to `main` branch or merged PR to `main`
 
 **Features**:
 - Docker image building and optimization

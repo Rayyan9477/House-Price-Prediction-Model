@@ -1,0 +1,105 @@
+name: Automated Pull Request Creation
+
+on:
+  push:
+    branches: [ dev, test ]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  create-pr-dev-to-test:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Create Pull Request from dev to test
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        branch: auto-pr-dev-to-test
+        base: test
+        title: "🚀 Automated PR: Feature merge from dev to test"
+        body: |
+          ## 🚀 Automated Pull Request
+
+          This PR was automatically created to merge changes from the `dev` branch to the `test` branch.
+
+          ### Changes
+          - All commits from `dev` branch
+          - Ready for testing phase
+
+          ### Workflow
+          1. ✅ Code quality checks passed on `dev`
+          2. 🔄 This PR triggers automated testing on `test`
+          3. 📦 After testing passes, create PR to `main` for deployment
+
+          ### Next Steps
+          - Review and approve this PR
+          - Automated testing will run after merge
+          - Deployment PR will be created automatically
+
+          *This PR was created automatically by the CI/CD pipeline*
+        labels: |
+          automated
+          dev-to-test
+          testing-required
+        assignees: ${{ github.actor }}
+
+  create-pr-test-to-main:
+    if: github.ref == 'refs/heads/test'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Create Pull Request from test to main
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        branch: auto-pr-test-to-main
+        base: main
+        title: "🚀 Automated PR: Deployment from test to main"
+        body: |
+          ## 🚀 Automated Deployment Pull Request
+
+          This PR was automatically created to deploy tested changes from the `test` branch to the `main` branch.
+
+          ### Changes
+          - All commits from `test` branch
+          - Passed automated testing
+          - Ready for production deployment
+
+          ### Workflow
+          1. ✅ Code quality checks passed on `dev`
+          2. ✅ Automated testing passed on `test`
+          3. 🔄 This PR triggers containerization and Docker Hub deployment
+          4. 📧 Email notification sent to administrator
+
+          ### Deployment Process
+          - Docker image will be built and pushed to Docker Hub
+          - Security scan will be performed
+          - Administrator will receive email notification
+          - GitHub issue will be created for tracking
+
+          ### Next Steps
+          - Review and approve this PR
+          - Monitor deployment workflow
+          - Check email for deployment confirmation
+
+          *This PR was created automatically by the CI/CD pipeline*
+        labels: |
+          automated
+          test-to-main
+          deployment
+          production
+        assignees: ${{ github.actor }}

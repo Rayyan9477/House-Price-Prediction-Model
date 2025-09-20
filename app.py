@@ -400,6 +400,16 @@ def home():
     """
     return render_template_string(html_template)
 
+@app.route('/health')
+def health():
+    """Health check endpoint for Docker"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': pd.Timestamp.now().isoformat(),
+        'model_loaded': model_data is not None,
+        'model_name': model_data.get('model_name', 'Unknown') if model_data else 'None'
+    })
+
 @app.route('/predict', methods=['POST'])
 def predict():
     """Handle prediction requests"""

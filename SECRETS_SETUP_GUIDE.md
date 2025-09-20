@@ -170,7 +170,7 @@ images: ${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction
 2. **Testing Workflow** (test branch):
    - ✅ Runs without secrets (uses GITHUB_TOKEN automatically)
 
-3. **Deployment Workflow** (master branch):
+3. **Deployment Workflow** (main branch):
    - ✅ Authenticates with Docker Hub using secrets
    - ✅ Builds and pushes Docker image
    - ✅ Creates GitHub issue notification

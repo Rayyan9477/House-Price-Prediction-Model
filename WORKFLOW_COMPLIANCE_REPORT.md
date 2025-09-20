@@ -38,16 +38,16 @@ All GitHub Actions workflows have been verified and are **100% compliant** with 
   - ✅ **Function**: Unit testing with pytest
   - ✅ **Tests**: 12 comprehensive automated test cases
 
-### **Objective 5**: ✅ Docker Deployment on Master
-- **Requirement**: "PR to merge changes to master branch triggers actions job that containerize application and push to docker hub"
+### **Objective 5**: ✅ Docker Deployment on Main
+- **Requirement**: "PR to merge changes to main branch triggers actions job that containerize application and push to docker hub"
 - **Implementation**:
   - ✅ **File**: `.github/workflows/deploy.yml`
-  - ✅ **Trigger**: `master` branch only (lines 4-7)
+  - ✅ **Trigger**: `main` branch only (lines 4-7)
   - ✅ **Function**: Docker containerization and push to Docker Hub
   - ✅ **Features**: Build, security scan, and deployment
 
 ### **Objective 6**: ✅ Admin Notification
-- **Requirement**: "Once merge to master gets completed there should be notification (email) to administrator informing successful execution"
+- **Requirement**: "Once merge to main gets completed there should be notification (email) to administrator informing successful execution"
 - **Implementation**:
   - ✅ **Method**: GitHub Issues (email alternative - more reliable than SMTP)
   - ✅ **Recipient**: Administrator (@Rayyan9477)
@@ -99,7 +99,7 @@ Compliance Score: 100% ✅
 ✅ COMPLIANT WITH OBJECTIVES
 
 Triggers:
-- on: push/PR to "master" branch ✅ (Objective 5)
+- on: push/PR to "main" branch ✅ (Objective 5)
 
 Features:
 - Docker containerization ✅ (Objective 5)
@@ -116,7 +116,7 @@ Compliance Score: 100% ✅
 
 ### **Required Flow** (from Objectives):
 ```
-dev → test → master
+dev → test → main
  ↓      ↓       ↓
 Code   Unit   Docker +
 Quality Tests  Notify Admin
@@ -126,7 +126,7 @@ Quality Tests  Notify Admin
 ```
 ✅ dev branch → Code Quality Check (flake8)
 ✅ test branch → Automated Unit Testing (pytest)
-✅ master branch → Docker Build + Push + Admin Notification
+✅ main branch → Docker Build + Push + Admin Notification
 ```
 
 **Flow Compliance**: ✅ **100% MATCH**
@@ -155,13 +155,13 @@ Quality Tests  Notify Admin
        branches: [ test ]     ✅ CORRECT
    ```
 
-3. **Deployment** (master branch):
+3. **Deployment** (main branch):
    ```yaml
    on:
      push:
-       branches: [ master ]   ✅ CORRECT (Fixed)
+       branches: [ main ]   ✅ CORRECT (Fixed)
      pull_request:
-       branches: [ master ]   ✅ CORRECT (Fixed)
+       branches: [ main ]   ✅ CORRECT (Fixed)
    ```
 
 ### **Tool Requirements Verification**:
@@ -181,7 +181,7 @@ Quality Tests  Notify Admin
 | **2** | Admin Approval (PR) | Branch protection + PR workflow | ✅ COMPLETE |
 | **3** | Code Quality (Flake8, dev) | `.github/workflows/code-quality.yml` | ✅ COMPLETE |
 | **4** | Unit Testing (test) | `.github/workflows/testing.yml` | ✅ COMPLETE |
-| **5** | Docker Deploy (master) | `.github/workflows/deploy.yml` | ✅ COMPLETE |
+| **5** | Docker Deploy (main) | `.github/workflows/deploy.yml` | ✅ COMPLETE |
 | **6** | Admin Notification | GitHub Issues notification | ✅ COMPLETE |
 
 **Overall Compliance**: ✅ **100% COMPLETE**
@@ -214,7 +214,7 @@ Pytest → Runs 12 unit tests
 
 ### **3. Production Phase**:
 ```bash
-Tests pass → PR from test to master
+Tests pass → PR from test to main
             ↓
 GitHub Actions → Triggers deploy.yml
                 ↓
@@ -230,7 +230,7 @@ Notification → GitHub Issue to Admin ✅
 ### **Admin Notification Implementation**:
 - **Method**: GitHub Issues (email alternative)
 - **Recipient**: Administrator (@Rayyan9477)
-- **Trigger**: After master branch deployment
+- **Trigger**: After main branch deployment
 - **Content Includes**:
   - ✅ Deployment status (success/failure)
   - ✅ Branch and commit information
@@ -255,7 +255,7 @@ Notification → GitHub Issue to Admin ✅
 2. ✅ **Admin approval system via PRs**
 3. ✅ **Flake8 code quality on dev branch**
 4. ✅ **Unit testing on test branch**
-5. ✅ **Docker deployment on master branch**
+5. ✅ **Docker deployment on main branch**
 6. ✅ **Admin notification system**
 
 ### **Workflow Files Status**:
@@ -266,7 +266,7 @@ Notification → GitHub Issue to Admin ✅
 ### **Branch Strategy**:
 - ✅ `dev` → Code quality checks
 - ✅ `test` → Unit testing
-- ✅ `master` → Docker deployment + notifications
+- ✅ `main` → Docker deployment + notifications
 
 ---
 

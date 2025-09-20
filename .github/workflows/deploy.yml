@@ -1,11 +1,11 @@
 name: Build and Deploy to Docker Hub
 
 on:
-  push:
-    branches: [ master ]
   pull_request:
-    branches: [ master ]
-    types: [opened, synchronize, reopened, closed]
+    branches: [ main ]
+    types: [closed]
+  push:
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -16,20 +16,20 @@ jobs:
   build-and-deploy:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-    
+
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKER_HUB_USERNAME }}
         password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-    
+
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
@@ -40,7 +40,7 @@ jobs:
           type=ref,event=pr
           type=sha,prefix={{branch}}-
           type=raw,value=latest,enable={{is_default_branch}}
-    
+
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
@@ -51,7 +51,7 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-    
+
     - name: Run security scan
       uses: docker/scout-action@v1
       with:
@@ -63,7 +63,7 @@ jobs:
         format: json
         github-token: ${{ secrets.GITHUB_TOKEN }}
         write-comment: true
-    
+
     - name: Deploy notification
       if: success()
       run: |
@@ -71,44 +71,51 @@ jobs:
         echo "Image: ${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction:latest"
         echo "Tags: ${{ steps.meta.outputs.tags }}"
 
-  security-scan:
-    if: github.event_name == 'pull_request' && github.event.action != 'closed'
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    
-    - name: Build Docker image for scanning
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./Dockerfile
-        push: false
-        tags: temp-security-scan:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-    
-    - name: Run security scan on PR
-      uses: docker/scout-action@v1
-      with:
-        command: cves
-        image: temp-security-scan:latest
-        only-severities: critical,high
-        exit-code: false
-        summary: true
-        format: json
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        write-comment: true
-
   send-notification:
     needs: [build-and-deploy]
     runs-on: ubuntu-latest
     if: always() && needs.build-and-deploy.result != 'skipped'
-    
+
+    steps:
+    - name: Send Simple Notification
+      run: |
+        STATUS="${{ needs.build-and-deploy.result }}"
+        REPO="${{ github.repository }}"
+        BRANCH="${{ github.ref_name }}"
+        COMMIT="${{ github.sha }}"
+        WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+        if [ "$STATUS" = "success" ]; then
+          MESSAGE="✅ SUCCESS: CI/CD Pipeline completed successfully!
+
+📦 Repository: $REPO
+🌿 Branch: $BRANCH
+🔗 Commit: $COMMIT
+🐳 Docker Image: ${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction:latest
+
+� View Details: $WORKFLOW_URL
+
+The application has been successfully deployed to Docker Hub!"
+        else
+          MESSAGE="❌ FAILED: CI/CD Pipeline failed!
+
+📦 Repository: $REPO
+🌿 Branch: $BRANCH
+🔗 Commit: $COMMIT
+
+🔗 View Details: $WORKFLOW_URL
+
+Please check the workflow logs for error details."
+        fi
+
+        echo "$MESSAGE"
+        echo "::notice::$MESSAGE"
+
+  create-github-issue:
+    needs: [build-and-deploy]
+    runs-on: ubuntu-latest
+    if: always() && needs.build-and-deploy.result != 'skipped'
+
     steps:
     - name: Create GitHub Issue for Pipeline Status
       uses: actions/github-script@v7
@@ -117,12 +124,12 @@ jobs:
         script: |
           const status = '${{ needs.build-and-deploy.result }}';
           const statusEmoji = status === 'success' ? '✅' : '❌';
-          
+
           const title = `CI/CD Pipeline ${status.toUpperCase()} - ${new Date().toISOString().split('T')[0]}`;
-          
+
           const body = `
           ## ${statusEmoji} CI/CD Pipeline Execution Report
-          
+
           | Field | Value |
           |-------|-------|
           | **Repository** | \`${{ github.repository }}\` |
@@ -131,25 +138,25 @@ jobs:
           | **Status** | **${status.toUpperCase()}** |
           | **Workflow** | [View Details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
           | **Timestamp** | \`${{ github.event.head_commit.timestamp }}\` |
-          
+
           ### Result Details
-          ${status === 'success' ? 
-            '🎉 **Success!** The application has been successfully built and deployed to Docker Hub!' : 
+          ${status === 'success' ?
+            '🎉 **Success!** The application has been successfully built and deployed to Docker Hub!' :
             '🚨 **Failed!** The build process encountered an error. Please check the logs for details.'}
-          
+
           ### Docker Hub
-          ${status === 'success' ? 
-            'The new image has been pushed to: \`rayyan9477/house-price-prediction:latest\`' : 
+          ${status === 'success' ?
+            'The new image has been pushed to: \`${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction:latest\`' :
             'Docker deployment was not completed due to build failure.'}
-          
+
           ---
-          
+
           **Note for Administrator (@Rayyan9477)**: This issue was automatically created to notify the administrator of the CI/CD pipeline status as per project requirements.
           You can close this issue once you've reviewed the deployment results.
 
-          *This is an automated notification email-alternative from GitHub Actions CI/CD pipeline.*
+          *This is an automated notification from GitHub Actions CI/CD pipeline.*
           `;
-          
+
           // Create the issue
           await github.rest.issues.create({
             owner: context.repo.owner,
@@ -163,7 +170,7 @@ jobs:
             ],
             assignees: ['Rayyan9477']
           });
-    
+
     - name: Create Summary Report
       run: |
         echo "## 📊 CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
@@ -176,48 +183,49 @@ jobs:
         echo "| Status | **${{ needs.build-and-deploy.result }}** |" >> $GITHUB_STEP_SUMMARY
         echo "| Timestamp | \`${{ github.event.head_commit.timestamp }}\` |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        
+
         if [ "${{ needs.build-and-deploy.result }}" == "success" ]; then
           echo "✅ **Success!** The application has been successfully built and deployed to Docker Hub!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🐳 **Docker Image**: \`rayyan9477/house-price-prediction:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "🐳 **Docker Image**: \`${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction:latest\`" >> $GITHUB_STEP_SUMMARY
         else
           echo "❌ **Failed!** The build process encountered an error. Please check the logs for details." >> $GITHUB_STEP_SUMMARY
         fi
-        
+
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "🔗 [View Full Workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "📧 **Notification**: A GitHub issue has been created with the pipeline status details." >> $GITHUB_STEP_SUMMARY
-    
-    - name: Comment on Related Pull Request (if exists)
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
+        echo "� **Notification**: GitHub issue created with deployment status." >> $GITHUB_STEP_SUMMARY
+
+  security-scan:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image for scanning
+      uses: docker/build-push-action@v5
       with:
+        context: .
+        file: ./Dockerfile
+        push: false
+        tags: temp-security-scan:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Run security scan on PR
+      uses: docker/scout-action@v1
+      with:
+        command: cves
+        image: temp-security-scan:latest
+        only-severities: critical,high
+        exit-code: false
+        summary: true
+        format: json
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          const status = '${{ needs.build-and-deploy.result }}';
-          const statusEmoji = status === 'success' ? '✅' : '❌';
-          
-          const comment = `
-          ## ${statusEmoji} CI/CD Pipeline ${status.toUpperCase()}
-          
-          **Deployment Status**: ${status === 'success' ? 
-            'Successfully deployed to Docker Hub! 🎉' : 
-            'Deployment failed. Please check the logs. 🚨'}
-          
-          **Details**:
-          - Branch: \`${{ github.ref_name }}\`
-          - Commit: \`${{ github.sha }}\`
-          - Workflow: [View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-          ${status === 'success' ? '- Docker Image: `rayyan9477/house-price-prediction:latest`' : ''}
-          
-          *Automated comment from CI/CD pipeline*
-          `;
-          
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: comment
-          });
+        write-comment: true
