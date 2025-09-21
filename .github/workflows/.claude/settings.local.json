@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(yamlint:*)",
+      "Bash(yamllint:*)",
+      "Read(//r/House-Price-Prediction-Model/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

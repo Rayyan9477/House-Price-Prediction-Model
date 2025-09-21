@@ -43,7 +43,26 @@ jobs:
             type=ref,event=branch
             type=ref,event=pr
             type=sha,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/dev' }}
+
+      - name: Build and test Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: test-image:latest
+          cache-from: type=gha
+
+      - name: Test Docker image
+        run: |
+          echo "Testing Docker image..."
+          docker run --rm -d --name test-container \\
+            -p 5000:5000 test-image:latest
+          sleep 10
+          curl -f http://localhost:5000/health || exit 1
+          docker stop test-container
+          echo "Docker image test passed!"
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -73,8 +92,8 @@ jobs:
         if: success()
         run: |
           echo "Docker image successfully built and pushed!"
-          echo "Image: ${{ secrets.DOCKER_HUB_USERNAME }}"
-            "/house-price-prediction:latest"
+          echo "Image: ${{ secrets.DOCKER_HUB_USERNAME }}/" \\
+            "house-price-prediction:latest"
           echo "Tags: ${{ steps.meta.outputs.tags }}"
 
   send-notification:
@@ -92,29 +111,24 @@ jobs:
           WORKFLOW_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
           if [ "$STATUS" = "success" ]; then
-            MESSAGE= |
-              SUCCESS: CI/CD Pipeline completed successfully!
-
-              Repository: $REPO
-              Branch: $BRANCH
-              Commit: $COMMIT
-              Docker Image: ${{ secrets.DOCKER_HUB_USERNAME }}
-                /house-price-prediction:latest
-
-              View Details: $WORKFLOW_URL
-
-              The application has been successfully deployed to Docker Hub!
+            MESSAGE="SUCCESS: CI/CD Pipeline completed successfully!"
+            MESSAGE="$MESSAGE\n\nRepository: $REPO"
+            MESSAGE="$MESSAGE\nBranch: $BRANCH"
+            MESSAGE="$MESSAGE\nCommit: $COMMIT"
+            MESSAGE="$MESSAGE\nDocker Image: "
+            MESSAGE="$MESSAGE${{ secrets.DOCKER_HUB_USERNAME }}/"
+            MESSAGE="${MESSAGE}house-price-prediction:latest"
+            MESSAGE="$MESSAGE\n\nView Details: $WORKFLOW_URL"
+            MESSAGE="$MESSAGE\n\nThe application has been successfully "
+            MESSAGE="${MESSAGE}deployed to Docker Hub!"
           else
-            MESSAGE= |
-              FAILED: CI/CD Pipeline failed!
-
-              Repository: $REPO
-              Branch: $BRANCH
-              Commit: $COMMIT
-
-              View Details: $WORKFLOW_URL
-
-              Please check the workflow logs for error details.
+            MESSAGE="FAILED: CI/CD Pipeline failed!"
+            MESSAGE="$MESSAGE\n\nRepository: $REPO"
+            MESSAGE="$MESSAGE\nBranch: $BRANCH"
+            MESSAGE="$MESSAGE\nCommit: $COMMIT"
+            MESSAGE="$MESSAGE\n\nView Details: $WORKFLOW_URL"
+            MESSAGE="$MESSAGE\n\nPlease check the workflow logs for "
+            MESSAGE="${MESSAGE}error details."
           fi
 
           echo "$MESSAGE"
@@ -192,20 +206,19 @@ jobs:
 
       - name: Create Summary Report
         run: |
-          echo "## CI/CD Pipeline Summary"
-            >> $GITHUB_STEP_SUMMARY
+          echo "## CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Repository | \`${{ github.repository }}\` |"
+          echo "| Repository | \`${{ github.repository }}\` |" \
             >> $GITHUB_STEP_SUMMARY
-          echo "| Branch | \`${{ github.ref_name }}\` |"
+          echo "| Branch | \`${{ github.ref_name }}\` |" \
             >> $GITHUB_STEP_SUMMARY
-          echo "| Commit | \`${{ github.sha }}\` |"
+          echo "| Commit | \`${{ github.sha }}\` |" \
             >> $GITHUB_STEP_SUMMARY
-          echo "| Status | **${{ needs.build-and-deploy.result }}** |"
+          echo "| Status | **${{ needs.build-and-deploy.result }}** |" \
             >> $GITHUB_STEP_SUMMARY
-          echo "| Timestamp | \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\` |"
+          echo "| Timestamp | \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\` |" \
             >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -213,20 +226,18 @@ jobs:
             echo "Success! The application has been successfully " \
               "built and deployed to Docker Hub!" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Docker Image: " \
-              "\`${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction:" \
-              "latest\`" >> $GITHUB_STEP_SUMMARY
+            echo "Docker Image: \`${{ secrets.DOCKER_HUB_USERNAME }}/" \
+              "house-price-prediction:latest\`" >> $GITHUB_STEP_SUMMARY
           else
             echo "Failed! The build process encountered an error. " \
               "Please check the logs for details." >> $GITHUB_STEP_SUMMARY
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "View Full Workflow" \
-            >> $GITHUB_STEP_SUMMARY
+          echo "View Full Workflow" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Notification: GitHub issue created with deployment " \
-            "status." >> $GITHUB_STEP_SUMMARY
+          echo "Notification: GitHub issue created with " \
+            "deployment status." >> $GITHUB_STEP_SUMMARY
 
   security-scan:
     if: github.event_name == 'pull_request' && github.event.action != 'closed'
