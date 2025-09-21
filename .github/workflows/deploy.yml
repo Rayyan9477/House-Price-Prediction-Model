@@ -1,7 +1,7 @@
 ---
 name: Build and Deploy to Docker Hub
 
-on:
+"on":
   push:
     branches: ["dev"]
   pull_request:
@@ -57,7 +57,7 @@ jobs:
       - name: Test Docker image
         run: |
           echo "Testing Docker image..."
-          docker run --rm -d --name test-container \\
+          docker run --rm -d --name test-container \
             -p 5000:5000 test-image:latest
           sleep 10
           curl -f http://localhost:5000/health || exit 1

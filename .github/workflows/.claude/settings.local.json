@@ -3,7 +3,9 @@
     "allow": [
       "Bash(yamlint:*)",
       "Bash(yamllint:*)",
-      "Read(//r/House-Price-Prediction-Model/**)"
+      "Read(//r/House-Price-Prediction-Model/**)",
+      "Bash(docker build:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []
