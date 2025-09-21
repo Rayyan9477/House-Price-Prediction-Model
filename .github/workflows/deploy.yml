@@ -89,8 +89,7 @@ jobs:
           REPO="${{ github.repository }}"
           BRANCH="${{ github.ref_name }}"
           COMMIT="${{ github.sha }}"
-          WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}"
-            "/actions/runs/${{ github.run_id }}"
+          WORKFLOW_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
           if [ "$STATUS" = "success" ]; then
             MESSAGE= |
