@@ -27,12 +27,12 @@ RUN pip install --no-cache-dir --upgrade pip \
 COPY . .
 
 # Reconstruct model if parts exist
-RUN python split_model.py reconstruct || echo "Model reconstruction not needed or failed"
+RUN python split_model.py reconstruct && echo "Model reconstruction successful" || (echo "Model reconstruction failed, will train new model" && exit 0)
 
-# Create a non-root user
+# Create a non-root user and set proper permissions
 RUN adduser --disabled-password --gecos '' appuser \
-    && chown -R appuser:appuser /app
-USER appuser
+    && chown -R appuser:appuser /app \
+    && chmod +x app.py split_model.py
 
 # Expose the port the app runs on
 EXPOSE 5000

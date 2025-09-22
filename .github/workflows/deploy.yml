@@ -25,6 +25,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Verify required files
+        run: |
+          echo "Verifying required files..."
+          # Check for essential files
+          required_files=("Dockerfile" "requirements.txt" "app.py" "House_dataset.csv")
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "Error: Required file $file is missing!"
+              exit 1
+            fi
+          done
+          echo "All required files are present."
+
+      - name: Verify required secrets
+        run: |
+          echo "Verifying required secrets..."
+          if [ -z "${{ secrets.DOCKER_HUB_USERNAME }}" ]; then
+            echo "Error: DOCKER_HUB_USERNAME secret is not set!"
+            exit 1
+          fi
+          if [ -z "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" ]; then
+            echo "Error: DOCKER_HUB_ACCESS_TOKEN secret is not set!"
+            exit 1
+          fi
+          echo "All required secrets are configured."
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -59,8 +85,23 @@ jobs:
           echo "Testing Docker image..."
           docker run --rm -d --name test-container \
             -p 5000:5000 test-image:latest
-          sleep 10
+          sleep 15
+          # Test health endpoint
           curl -f http://localhost:5000/health || exit 1
+          echo "Health check passed!"
+
+          # Verify model is loaded in health response
+          health_response=$(curl -s http://localhost:5000/health)
+          if [[ $health_response != *"model_loaded"* ]]; then
+            echo "Error: Model not loaded properly"
+            exit 1
+          fi
+          echo "Model loading verified!"
+
+          # Test root endpoint
+          curl -f http://localhost:5000/ || exit 1
+          echo "Root endpoint test passed!"
+
           docker stop test-container
           echo "Docker image test passed!"
 
@@ -92,8 +133,7 @@ jobs:
         if: success()
         run: |
           echo "Docker image successfully built and pushed!"
-          echo "Image: ${{ secrets.DOCKER_HUB_USERNAME }}/" \\
-            "house-price-prediction:latest"
+          echo "Image: ${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction:latest"
           echo "Tags: ${{ steps.meta.outputs.tags }}"
 
   send-notification:
@@ -115,9 +155,7 @@ jobs:
             MESSAGE="$MESSAGE\n\nRepository: $REPO"
             MESSAGE="$MESSAGE\nBranch: $BRANCH"
             MESSAGE="$MESSAGE\nCommit: $COMMIT"
-            MESSAGE="$MESSAGE\nDocker Image: "
-            MESSAGE="$MESSAGE${{ secrets.DOCKER_HUB_USERNAME }}/"
-            MESSAGE="${MESSAGE}house-price-prediction:latest"
+            MESSAGE="$MESSAGE\nDocker Image: ${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction:latest"
             MESSAGE="$MESSAGE\n\nView Details: $WORKFLOW_URL"
             MESSAGE="$MESSAGE\n\nThe application has been successfully "
             MESSAGE="${MESSAGE}deployed to Docker Hub!"
@@ -131,7 +169,7 @@ jobs:
             MESSAGE="${MESSAGE}error details."
           fi
 
-          echo "$MESSAGE"
+          echo -e "$MESSAGE"
           echo "::notice::$MESSAGE"
 
   create-github-issue:
@@ -172,9 +210,7 @@ jobs:
               '',
               '### Docker Hub',
               status === 'success'
-                ? 'The new image has been pushed to: ' +
-                  '`${{ secrets.DOCKER_HUB_USERNAME }}/' +
-                  'house-price-prediction:latest`'
+                ? `The new image has been pushed to: \`${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction:latest}\``
                 : 'Docker deployment was not completed due to build failure.',
               '',
               '---',
@@ -210,42 +246,48 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Repository | \`${{ github.repository }}\` |" \
-            >> $GITHUB_STEP_SUMMARY
-          echo "| Branch | \`${{ github.ref_name }}\` |" \
-            >> $GITHUB_STEP_SUMMARY
-          echo "| Commit | \`${{ github.sha }}\` |" \
-            >> $GITHUB_STEP_SUMMARY
-          echo "| Status | **${{ needs.build-and-deploy.result }}** |" \
-            >> $GITHUB_STEP_SUMMARY
-          echo "| Timestamp | \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\` |" \
-            >> $GITHUB_STEP_SUMMARY
+          echo "| Repository | \`${{ github.repository }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | **${{ needs.build-and-deploy.result }}** |" >> $GITHUB_STEP_SUMMARY
+          echo "| Timestamp | \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.build-and-deploy.result }}" = "success" ]; then
-            echo "Success! The application has been successfully " \
-              "built and deployed to Docker Hub!" >> $GITHUB_STEP_SUMMARY
+            echo "Success! The application has been successfully built and deployed to Docker Hub!" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Docker Image: \`${{ secrets.DOCKER_HUB_USERNAME }}/" \
-              "house-price-prediction:latest\`" >> $GITHUB_STEP_SUMMARY
+            echo "Docker Image: \`${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction:latest\`" >> $GITHUB_STEP_SUMMARY
           else
-            echo "Failed! The build process encountered an error. " \
-              "Please check the logs for details." >> $GITHUB_STEP_SUMMARY
+            echo "Failed! The build process encountered an error. Please check the logs for details." >> $GITHUB_STEP_SUMMARY
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "View Full Workflow" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Notification: GitHub issue created with " \
-            "deployment status." >> $GITHUB_STEP_SUMMARY
+          echo "Notification: GitHub issue created with deployment status." >> $GITHUB_STEP_SUMMARY
 
   security-scan:
-    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    if: >
+      github.event_name == 'pull_request' && github.event.action != 'closed' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Verify required files
+        run: |
+          echo "Verifying required files..."
+          # Check for essential files
+          required_files=("Dockerfile" "requirements.txt" "app.py" "House_dataset.csv")
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "Error: Required file $file is missing!"
+              exit 1
+            fi
+          done
+          echo "All required files are present."
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
