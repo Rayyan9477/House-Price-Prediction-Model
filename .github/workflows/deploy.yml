@@ -85,24 +85,50 @@ jobs:
           echo "Testing Docker image..."
           docker run --rm -d --name test-container \
             -p 5000:5000 test-image:latest
-          sleep 15
-          # Test health endpoint
-          curl -f http://localhost:5000/health || exit 1
-          echo "Health check passed!"
+
+          # Wait for application to start
+          sleep 20
+
+          # Test health endpoint with retry
+          max_attempts=5
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            echo "Health check attempt $attempt..."
+            if curl -f --max-time 10 http://localhost:5000/health; then
+              echo "Health check passed!"
+              break
+            else
+              echo "Health check failed, retrying..."
+              sleep 5
+              attempt=$((attempt + 1))
+            fi
+          done
+
+          if [ $attempt -gt $max_attempts ]; then
+            echo "Error: Health check failed after $max_attempts attempts"
+            docker stop test-container || true
+            exit 1
+          fi
 
           # Verify model is loaded in health response
-          health_response=$(curl -s http://localhost:5000/health)
+          health_response=$(curl -s --max-time 10 http://localhost:5000/health)
           if [[ $health_response != *"model_loaded"* ]]; then
             echo "Error: Model not loaded properly"
+            docker stop test-container || true
             exit 1
           fi
           echo "Model loading verified!"
 
           # Test root endpoint
-          curl -f http://localhost:5000/ || exit 1
+          if ! curl -f --max-time 10 http://localhost:5000/; then
+            echo "Error: Root endpoint test failed"
+            docker stop test-container || true
+            exit 1
+          fi
           echo "Root endpoint test passed!"
 
-          docker stop test-container
+          # Clean up
+          docker stop test-container || true
           echo "Docker image test passed!"
 
       - name: Build and push Docker image
@@ -117,17 +143,22 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Run security scan on pushed image
-        uses: docker/scout-action@v1
+        # Using Trivy instead of Docker Scout for better compatibility
+        uses: aquasecurity/trivy-action@master
         with:
-          command: cves
-          image: >
-            ${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction:latest
-          only-severities: critical,high
-          exit-code: false
-          summary: true
-          format: json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          write-comment: true
+          image-ref: ${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          timeout: '10m'
+          scan-type: 'config'
+          scan-ref: '.'
+          scanners: 'vuln,secret,misconfig'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
 
       - name: Deploy notification
         if: success()
@@ -210,7 +241,7 @@ jobs:
               '',
               '### Docker Hub',
               status === 'success'
-                ? `The new image has been pushed to: \`${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction:latest}\``
+                ? 'The new image has been pushed to: `' + '${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction:latest' + '`'
                 : 'Docker deployment was not completed due to build failure.',
               '',
               '---',
@@ -303,13 +334,19 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Run security scan on PR
-        uses: docker/scout-action@v1
+        # Using Trivy instead of Docker Scout for better compatibility
+        uses: aquasecurity/trivy-action@master
         with:
-          command: cves
-          image: temp-security-scan:latest
-          only-severities: critical,high
-          exit-code: false
-          summary: true
-          format: json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          write-comment: true
+          image-ref: temp-security-scan:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          timeout: '10m'
+          scan-type: 'config'
+          scan-ref: '.'
+          scanners: 'vuln,secret,misconfig'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'

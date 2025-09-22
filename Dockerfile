@@ -14,25 +14,36 @@ RUN apt-get update \
         curl \
         gcc \
         g++ \
-        && rm -rf /var/lib/apt/lists/*
+        && rm -rf /var/lib/apt/lists/* \
+        && curl --version
 
 # Copy requirements file
 COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+    && pip install --no-cache-dir -r requirements.txt \
+    && pip list
 
 # Copy application code
 COPY . .
 
 # Reconstruct model if parts exist
-RUN python split_model.py reconstruct && echo "Model reconstruction successful" || (echo "Model reconstruction failed, will train new model" && exit 0)
+RUN set -e; \
+    if python split_model.py reconstruct; then \
+        echo "Model reconstruction successful"; \
+    else \
+        echo "Model reconstruction failed, but continuing build..."; \
+        echo "Application will train new model on first run"; \
+    fi
 
 # Create a non-root user and set proper permissions
 RUN adduser --disabled-password --gecos '' appuser \
     && chown -R appuser:appuser /app \
     && chmod +x app.py split_model.py
+
+# Switch to non-root user
+USER appuser
 
 # Expose the port the app runs on
 EXPOSE 5000
