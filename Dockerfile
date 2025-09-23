@@ -28,13 +28,14 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy application code
 COPY . .
 
-# Reconstruct model if parts exist
+# Reconstruct model if parts exist and verify artifact
 RUN set -e; \
-    if python split_model.py reconstruct; then \
+    echo "Attempting model reconstruction..."; \
+    python split_model.py reconstruct || true; \
+    if [ -s house_price_model.pkl ]; then \
         echo "Model reconstruction successful"; \
     else \
-        echo "Model reconstruction failed, but continuing build..."; \
-        echo "Application will train new model on first run"; \
+        echo "Model reconstruction not available. App will train on first run."; \
     fi
 
 # Create a non-root user and set proper permissions
