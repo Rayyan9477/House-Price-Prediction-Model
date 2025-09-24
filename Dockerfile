@@ -8,22 +8,32 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install system dependencies
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+
         curl \
+
+        ca-certificates \
         gcc \
         g++ \
-        && rm -rf /var/lib/apt/lists/* \
-        && curl --version
+
+    && rm -rf /var/lib/apt/lists/* \
+
+    && update-ca-certificates \
+    && curl --version
+
 
 # Copy requirements file
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt \
-    && pip list
+
+RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel \
+
+    && python -m pip install --no-cache-dir -r requirements.txt \
+
+    && python -m pip list
+
 
 # Copy application code
 COPY . .

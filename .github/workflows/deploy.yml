@@ -33,7 +33,6 @@ jobs:
       (github.event.action == 'closed' &&
       github.event.pull_request.merged == true)
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -144,7 +143,10 @@ jobs:
           echo "Docker image test passed!"
 
       - name: Build and push Docker image
+
+        id: build-and-push
         uses: docker/build-push-action@v6
+
         with:
           context: .
           file: ./Dockerfile
@@ -154,40 +156,43 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Run vulnerability scan on built image (Trivy)
-        uses: aquasecurity/trivy-action@v0.28.0
-        with:
-          image-ref: test-image:latest
-          scan-type: 'image'
-          scanners: 'vuln,secret'
-          ignore-unfixed: true
-          skip-version-check: true
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          timeout: '10m'
+      - name: Run vulnerability scan on pushed image by digest (Trivy via Docker)
+        run: |
+          docker pull aquasec/trivy:0.56.2
+          docker run --rm \
+            -v "$PWD:/work" \
+            aquasec/trivy:0.56.2 image \
+            --scanners vuln,secret \
+            --ignore-unfixed \
+            --format sarif \
+            --output /work/trivy-results.sarif \
+            --timeout 10m \
+            "${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction@${{ steps.build-and-push.outputs.digest }}"
 
       - name: Upload Trivy image scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         if: always() && github.event_name != 'pull_request' && hashFiles('trivy-results.sarif') != ''
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
 
-      - name: Run config and secret scan on repository (Trivy)
-        uses: aquasecurity/trivy-action@v0.28.0
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          scanners: 'secret,misconfig'
-          skip-version-check: true
-          format: 'sarif'
-          output: 'trivy-results-config.sarif'
-          timeout: '10m'
+      - name: Run config and secret scan on repository (Trivy via Docker)
+
+        run: |
+          docker pull aquasec/trivy:0.56.2
+          docker run --rm \
+            -v "$PWD:/work" \
+            aquasec/trivy:0.56.2 fs \
+            --scanners secret,misconfig \
+            --format sarif \
+            --output /work/trivy-results-config.sarif \
+            --timeout 10m \
+            /work
 
       - name: Upload Trivy config/secret scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         if: always() && github.event_name != 'pull_request' && hashFiles('trivy-results-config.sarif') != ''
         with:
-          sarif_file: 'trivy-results-config.sarif'
+          sarif_file: "trivy-results-config.sarif"
 
       - name: Deploy notification
         if: success()
@@ -331,24 +336,25 @@ jobs:
       github.event_name == 'pull_request' && github.event.action != 'closed' ||
       (github.event_name == 'push' && github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run config and secret scan on repository (Trivy)
-        uses: aquasecurity/trivy-action@v0.28.0
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          scanners: 'secret,misconfig'
-          skip-version-check: true
-          format: 'sarif'
-          output: 'trivy-results-config.sarif'
-          timeout: '10m'
+      - name: Run config and secret scan on repository (Trivy via Docker)
+
+        run: |
+          docker pull aquasec/trivy:0.56.2
+          docker run --rm \
+            -v "$PWD:/work" \
+            aquasec/trivy:0.56.2 fs \
+            --scanners secret,misconfig \
+            --format sarif \
+            --output /work/trivy-results-config.sarif \
+            --timeout 10m \
+            /work
 
       - name: Upload Trivy config/secret scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         if: always() && hashFiles('trivy-results-config.sarif') != ''
         with:
-          sarif_file: 'trivy-results-config.sarif'
+          sarif_file: "trivy-results-config.sarif"
