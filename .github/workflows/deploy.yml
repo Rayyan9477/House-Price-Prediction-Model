@@ -170,10 +170,14 @@ jobs:
             "${{ secrets.DOCKER_HUB_USERNAME }}/house-price-prediction@${{ steps.build-and-push.outputs.digest }}"
 
       - name: Upload Trivy image scan results to GitHub Security tab
+
         uses: github/codeql-action/upload-sarif@v3
+
         if: always() && github.event_name != 'pull_request' && hashFiles('trivy-results.sarif') != ''
+
         with:
           sarif_file: "trivy-results.sarif"
+          category: "trivy-image"
 
       - name: Run config and secret scan on repository (Trivy via Docker)
 
@@ -189,12 +193,18 @@ jobs:
             /work
 
       - name: Upload Trivy config/secret scan results to GitHub Security tab
+
         uses: github/codeql-action/upload-sarif@v3
+
         if: always() && github.event_name != 'pull_request' && hashFiles('trivy-results-config.sarif') != ''
+
         with:
           sarif_file: "trivy-results-config.sarif"
 
+          category: "trivy-config-build"
+
       - name: Deploy notification
+
         if: success()
         run: |
           echo "Docker image successfully built and pushed!"
@@ -358,3 +368,4 @@ jobs:
         if: always() && hashFiles('trivy-results-config.sarif') != ''
         with:
           sarif_file: "trivy-results-config.sarif"
+          category: "trivy-config-security-scan"
