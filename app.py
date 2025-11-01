@@ -9,6 +9,7 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import os
+import io
 
 app = Flask(__name__)
 
@@ -87,45 +88,29 @@ def load_and_train_model():
     print(f"Model saved to {MODEL_FILE}")
     return model_data
 
-def reconstruct_model_if_needed():
-    """Reconstruct model from parts if main file doesn't exist"""
-    if not os.path.exists(MODEL_FILE) and os.path.exists('model_parts.info'):
-        print("Model file not found, reconstructing from parts...")
-
-        # Read info
-        with open('model_parts.info', 'rb') as f:
-            info = pickle.load(f)
-
-        total_parts = info['total_parts']
-
-        # Check if all parts exist
-        all_parts_exist = True
-        for i in range(1, total_parts + 1):
-            part_filename = f'house_price_model.pkl.part{i:02d}'
-            if not os.path.exists(part_filename):
-                all_parts_exist = False
-                break
-
-        if all_parts_exist:
-            # Reconstruct file
-            with open(MODEL_FILE, 'wb') as outfile:
-                for i in range(1, total_parts + 1):
-                    part_filename = f'house_price_model.pkl.part{i:02d}'
-                    with open(part_filename, 'rb') as infile:
-                        outfile.write(infile.read())
-            print(f"Model reconstructed successfully from {total_parts} parts")
-        else:
-            print("Some model parts are missing, will train new model")
-
 def load_model():
     """Load trained model or train new one if not exists"""
-    # First try to reconstruct from parts if needed
-    reconstruct_model_if_needed()
-
     if os.path.exists(MODEL_FILE):
         with open(MODEL_FILE, 'rb') as f:
             return pickle.load(f)
     else:
+        # Try to load from parts in memory
+        if os.path.exists('model_parts.info'):
+            with open('model_parts.info', 'rb') as f:
+                info = pickle.load(f)
+            total_parts = info['total_parts']
+            # Check if all parts exist
+            all_parts_exist = all(os.path.exists(f'house_price_model.pkl.part{i:02d}') for i in range(1, total_parts + 1))
+            if all_parts_exist:
+                # Combine parts in memory
+                combined = io.BytesIO()
+                for i in range(1, total_parts + 1):
+                    part_filename = f'house_price_model.pkl.part{i:02d}'
+                    with open(part_filename, 'rb') as infile:
+                        combined.write(infile.read())
+                combined.seek(0)
+                return pickle.load(combined)
+        # If not, train new model
         return load_and_train_model()
 
 # Load model on startup

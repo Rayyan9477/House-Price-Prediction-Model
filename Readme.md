@@ -347,7 +347,7 @@ Click the link to watch demo.
 
 ## Contact
 
-- **Email**: i222489@nu.edu.pk
+- **Email**: rayyanahmed265@yahoo.com
 - **GitHub**: [Rayyan9477](https://github.com/Rayyan9477)
 - **LinkedIn**: [Rayyan Ahmed](https://www.linkedin.com/in/rayyan-ahmed9477/)
 
