@@ -1,4 +1,4 @@
-flask>=3.0.0
+streamlit>=1.28.0
 pandas>=2.2.0
 numpy>=1.26.0
 scikit-learn>=1.4.0

@@ -9,7 +9,7 @@
 - [CI/CD Pipeline Overview](#cicd-pipeline-overview)
 - [Branch Strategy](#branch-strategy)
 - [Workflows](#workflows)
-- [API Documentation](#api-documentation)
+- [Application Features](#application-features)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Docker Deployment](#docker-deployment)
@@ -18,7 +18,7 @@
 - [Contact](#contact)
 
 ## Introduction
-This project is a machine learning-powered web application that predicts house prices using a RandomForest regression model. The project implements a comprehensive CI/CD pipeline using GitHub Actions, ensuring code quality, automated testing, and seamless deployment to Docker Hub.
+This project is a machine learning-powered web application that predicts house prices using a RandomForest regression model. The application is built with Streamlit for an interactive user interface. The project implements a comprehensive CI/CD pipeline using GitHub Actions, ensuring code quality, automated testing, and seamless deployment to Docker Hub.
 
 ## CI/CD Pipeline Overview
 
@@ -76,8 +76,8 @@ The CI/CD pipeline follows a three-branch strategy with automated workflows:
 **Features**:
 - Comprehensive unit test execution
 - Code coverage reporting
-- API endpoint validation
-- Flask application startup testing
+- Model validation testing
+- Streamlit application startup testing
 
 ### 3. Deployment Workflow (`.github/workflows/deploy.yml`)
 **Trigger**: Push to `main` branch or merged PR to `main`
@@ -89,93 +89,26 @@ The CI/CD pipeline follows a three-branch strategy with automated workflows:
 - Container security scanning
 - Email notifications to administrators
 
-## API Documentation
+## Application Features
 
-The Flask application provides the following REST API endpoints:
+The Streamlit application provides an interactive web interface for house price prediction:
 
-### Base URL: `http://localhost:5000`
+### User Interface
+- **Property Type Selection**: Choose from House, Flat, Penthouse, or Studio
+- **Location Input**: Text input for specific location (e.g., G-10, DHA Defence)
+- **City Selection**: Dropdown for major cities (Islamabad, Rawalpindi, Lahore, Karachi)
+- **Numeric Inputs**: Bedrooms, Bathrooms, and Area in Marla
+- **Purpose Selection**: For Sale or For Rent
 
-#### 1. Health Check
-- **Endpoint**: `GET /health`
-- **Description**: Check API status and model availability
-- **Response**:
-```json
-{
-  "status": "healthy",
-  "model_loaded": true
-}
-```
+### Prediction Features
+- **Real-time Prediction**: Instant price prediction using the trained ML model
+- **Model Information**: Display of the current model type and accuracy
+- **Model Retraining**: Button to retrain the model with fresh data
 
-#### 2. Model Information
-- **Endpoint**: `GET /model/info`
-- **Description**: Get trained model details
-- **Response**:
-```json
-{
-  "model_type": "RandomForestRegressor",
-  "features_count": 12,
-  "status": "trained"
-}
-```
-
-#### 3. Feature Information
-- **Endpoint**: `GET /features`
-- **Description**: Get list of required input features
-- **Response**:
-```json
-{
-  "features": ["area", "bedrooms", "bathrooms", ...],
-  "numerical": ["area", "bedrooms", "bathrooms", ...],
-  "categorical": ["mainroad", "guestroom", ...],
-  "total_features": 12
-}
-```
-
-#### 4. Price Prediction
-- **Endpoint**: `POST /predict`
-- **Description**: Predict house price based on features
-- **Request Body**:
-```json
-{
-  "features": {
-    "area": 1500,
-    "bedrooms": 3,
-    "bathrooms": 2,
-    "stories": 2,
-    "mainroad": "yes",
-    "guestroom": "no",
-    "basement": "no",
-    "hotwaterheating": "no",
-    "airconditioning": "yes",
-    "parking": 2,
-    "prefarea": "yes",
-    "furnishingstatus": "furnished"
-  }
-}
-```
-- **Response**:
-```json
-{
-  "prediction": 4500000.0,
-  "status": "success"
-}
-```
-
-#### 5. Model Retraining
-- **Endpoint**: `POST /retrain`
-- **Description**: Retrain the model with current dataset
-- **Response**:
-```json
-{
-  "status": "Model retrained successfully",
-  "metrics": {
-    "mae": 123.45,
-    "mse": 456.78,
-    "r2": 0.89,
-    "r2_percentage": 89.0
-  }
-}
-```
+### Model Details
+- **Algorithm**: RandomForest Regressor (best performing model)
+- **Accuracy**: R2 score displayed for transparency
+- **Features**: 7 input features for comprehensive prediction
 
 ## Installation
 
@@ -205,8 +138,10 @@ The Flask application provides the following REST API endpoints:
 
 5. **Run the application**:
    ```bash
-   python app.py
+   streamlit run app.py
    ```
+
+   The application will be available at `http://localhost:8501`
 
 ### Testing Setup
 
@@ -231,7 +166,7 @@ docker build -t house-price-prediction .
 ### Running Container
 
 ```bash
-docker run -p 5000:5000 house-price-prediction
+docker run -p 8501:8501 house-price-prediction
 ```
 
 ### Using Docker Compose (Optional)
@@ -243,9 +178,7 @@ services:
   app:
     build: .
     ports:
-      - "5000:5000"
-    environment:
-      - FLASK_ENV=production
+      - "8501:8501"
 ```
 
 Run with:
@@ -256,12 +189,10 @@ docker-compose up
 ## Dependencies
 
 ### Core Dependencies
-- **Flask 2.3.3**: Web framework for API development
+- **Streamlit 1.28.0**: Web framework for interactive applications
 - **pandas 2.0.3**: Data manipulation and analysis
 - **numpy 1.24.3**: Numerical computing
 - **scikit-learn 1.3.0**: Machine learning algorithms
-- **matplotlib 3.7.2**: Data visualization
-- **seaborn 0.12.2**: Statistical data visualization
 
 ### Development Dependencies
 - **pytest 7.4.0**: Testing framework
@@ -328,7 +259,7 @@ House-Price-Prediction-Model/
 ├── tests/
 │   ├── __init__.py
 │   └── test_app.py
-├── app.py                 # Flask application
+├── app.py                 # Streamlit application
 ├── House_dataset.csv      # Training dataset
 ├── requirements.txt       # Python dependencies
 ├── Dockerfile            # Container configuration

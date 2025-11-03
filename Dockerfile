@@ -57,11 +57,7 @@ RUN adduser --disabled-password --gecos '' appuser \
 USER appuser
 
 # Expose the port the app runs on
-EXPOSE 5000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+EXPOSE 8501
 
 # Run the application
-CMD ["python", "app.py"]
+CMD ["streamlit", "run", "app.py", "--server.port", "8501", "--server.address", "0.0.0.0"]

@@ -1,5 +1,4 @@
 import unittest
-import json
 import sys
 import os
 import pandas as pd
@@ -10,95 +9,7 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import app modules after path modification
-from app import app, load_and_train_model  # noqa: E402
-
-class TestHousePricePredictionAPI(unittest.TestCase):
-
-    def setUp(self):
-        """Set up test fixtures before each test method."""
-        self.app = app.test_client()
-        self.app.testing = True
-
-    def test_home_endpoint(self):
-        """Test the home page endpoint"""
-        response = self.app.get('/')
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'House Price Predictor', response.data)
-        self.assertIn(b'html', response.data)
-
-    def test_predict_endpoint_with_valid_data(self):
-        """Test prediction endpoint with valid data"""
-        sample_data = {
-            'property_type': 'House',
-            'location': 'G-10',
-            'city': 'Islamabad',
-            'baths': 3,
-            'purpose': 'For Sale',
-            'bedrooms': 4,
-            'Area_in_Marla': 8.0
-        }
-
-        response = self.app.post('/predict',
-                               data=json.dumps(sample_data),
-                               content_type='application/json')
-
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
-
-        self.assertIn('success', data)
-        self.assertTrue(data['success'])
-        self.assertIn('predicted_price', data)
-        self.assertIn('model_name', data)
-        self.assertIn('model_accuracy', data)
-        self.assertIsInstance(data['predicted_price'], (int, float))
-        self.assertGreater(data['predicted_price'], 0)
-
-    def test_predict_endpoint_missing_data(self):
-        """Test prediction endpoint with missing data"""
-        incomplete_data = {
-            'property_type': 'House',
-            'city': 'Islamabad'
-            # Missing required fields
-        }
-
-        response = self.app.post('/predict',
-                               data=json.dumps(incomplete_data),
-                               content_type='application/json')
-
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
-
-        # Should return an error or handle gracefully
-        self.assertIn('success', data)
-
-    def test_predict_endpoint_invalid_json(self):
-        """Test prediction endpoint with invalid JSON"""
-        response = self.app.post('/predict',
-                               data='invalid json',
-                               content_type='application/json')
-
-        # Should return either 400 for invalid JSON or 200 with error in response
-        self.assertIn(response.status_code, [200, 400])
-
-        if response.status_code == 200:
-            data = json.loads(response.data)
-            self.assertIn('success', data)
-            self.assertFalse(data['success'])  # Should indicate failure
-
-    def test_retrain_endpoint(self):
-        """Test the retrain endpoint"""
-        response = self.app.post('/retrain')
-
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
-
-        self.assertIn('success', data)
-        if data['success']:
-            self.assertIn('message', data)
-            self.assertIn('model_name', data)
-            self.assertIn('accuracy', data)
-        else:
-            self.assertIn('error', data)
+from app import load_and_train_model  # noqa: E402
 
 class TestModelFunctions(unittest.TestCase):
     """Test the core model functionality"""
@@ -182,8 +93,11 @@ class TestMLModelPerformance(unittest.TestCase):
     def test_prediction_consistency(self):
         """Test that predictions are consistent for the same input"""
         try:
-            # Make multiple predictions with same input
-            test_data = {
+            # Since we don't have endpoints, we'll test the model directly
+            model_data = load_and_train_model()
+            
+            # Create test input
+            test_data = pd.DataFrame([{
                 'property_type': 'House',
                 'location': 'G-10',
                 'city': 'Islamabad',
@@ -191,18 +105,19 @@ class TestMLModelPerformance(unittest.TestCase):
                 'purpose': 'For Sale',
                 'bedrooms': 4,
                 'Area_in_Marla': 8.0
-            }
+            }])
 
+            # Encode categorical variables
+            for col in ['property_type', 'location', 'city', 'purpose']:
+                if col in model_data['label_encoders']:
+                    le = model_data['label_encoders'][col]
+                    test_data[col] = le.transform([str(test_data[col].iloc[0])])
+
+            # Make multiple predictions
             predictions = []
             for _ in range(3):
-                response = self.app.post('/predict',
-                                       data=json.dumps(test_data),
-                                       content_type='application/json')
-
-                self.assertEqual(response.status_code, 200)
-                data = json.loads(response.data)
-                if data['success']:
-                    predictions.append(data['predicted_price'])
+                pred = model_data['model'].predict(test_data[model_data['feature_columns']])[0]
+                predictions.append(pred)
 
             # All predictions should be identical
             if len(predictions) > 1:
@@ -212,57 +127,6 @@ class TestMLModelPerformance(unittest.TestCase):
 
         except Exception as e:
             self.skipTest(f"Prediction consistency test skipped: {e}")
-
-class TestAPIEndpoints(unittest.TestCase):
-    """Test all API endpoints"""
-
-    def setUp(self):
-        """Set up test fixtures before each test method."""
-        self.app = app.test_client()
-        self.app.testing = True
-
-    def test_health_endpoint(self):
-        """Test a basic health check"""
-        # Test that the app starts without errors
-        response = self.app.get('/')
-        self.assertIn(response.status_code, [200, 404])  # 404 is also acceptable if no health endpoint
-
-    def test_prediction_validation(self):
-        """Test input validation for predictions"""
-        # Test with invalid property type
-        invalid_data = {
-            'property_type': 'InvalidType',
-            'location': 'G-10',
-            'city': 'Islamabad',
-            'baths': 3,
-            'purpose': 'For Sale',
-            'bedrooms': 4,
-            'Area_in_Marla': 8.0
-        }
-
-        response = self.app.post('/predict',
-                               data=json.dumps(invalid_data),
-                               content_type='application/json')
-
-        self.assertEqual(response.status_code, 200)  # Should handle gracefully
-
-        # Test with negative values
-        negative_data = {
-            'property_type': 'House',
-            'location': 'G-10',
-            'city': 'Islamabad',
-            'baths': -1,  # Invalid negative value
-            'purpose': 'For Sale',
-            'bedrooms': 4,
-            'Area_in_Marla': 8.0
-        }
-
-        response = self.app.post('/predict',
-                               data=json.dumps(negative_data),
-                               content_type='application/json')
-
-        # Should either handle gracefully or return appropriate error
-        self.assertIn(response.status_code, [200, 400])
 
 if __name__ == '__main__':
     # Run tests with high verbosity

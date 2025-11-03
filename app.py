@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template_string
+import streamlit as st
 import pandas as pd
 import pickle
 import numpy as np
@@ -11,7 +11,184 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import os
 import io
 
-app = Flask(__name__)
+# Page configuration
+st.set_page_config(
+    page_title="🏠 House Price Predictor",
+    page_icon="🏠",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS for dark theme
+st.markdown("""
+<style>
+    /* Dark theme overrides */
+    .stApp {
+        background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+        color: #ffffff;
+    }
+    
+    .css-1d391kg, .css-12ttj6m {
+        background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+    }
+    
+    /* Title styling */
+    .main-title {
+        background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 3.5em;
+        font-weight: 800;
+        text-align: center;
+        margin-bottom: 0.5em;
+        text-shadow: 0 0 30px rgba(102, 126, 234, 0.3);
+    }
+    
+    .subtitle {
+        text-align: center;
+        color: #b8c5d6;
+        font-size: 1.2em;
+        margin-bottom: 2em;
+        font-style: italic;
+    }
+    
+    /* Card styling */
+    .prediction-card {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        border: 1px solid rgba(102, 126, 234, 0.3);
+        border-radius: 20px;
+        padding: 2em;
+        margin: 1em 0;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .prediction-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.2);
+    }
+    
+    /* Form styling */
+    .stSelectbox, .stNumberInput, .stTextInput {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(102, 126, 234, 0.3);
+        border-radius: 10px;
+        padding: 0.5em;
+        margin-bottom: 1em;
+    }
+    
+    .stSelectbox:hover, .stNumberInput:hover, .stTextInput:hover {
+        border-color: #667eea;
+        box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
+    }
+    
+    /* Button styling */
+    .stButton>button {
+        background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 25px;
+        padding: 0.8em 2em;
+        font-weight: 600;
+        font-size: 1.1em;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* Success message styling */
+    .stSuccess {
+        background: linear-gradient(135deg, rgba(40, 167, 69, 0.2) 0%, rgba(34, 197, 94, 0.2) 100%);
+        border: 1px solid rgba(40, 167, 69, 0.5);
+        border-radius: 15px;
+        padding: 1.5em;
+        color: #d4edda;
+    }
+    
+    /* Info message styling */
+    .stInfo {
+        background: linear-gradient(135deg, rgba(23, 162, 184, 0.2) 0%, rgba(0, 123, 255, 0.2) 100%);
+        border: 1px solid rgba(23, 162, 184, 0.5);
+        border-radius: 15px;
+        padding: 1em;
+        color: #d1ecf1;
+    }
+    
+    /* Sidebar styling */
+    .css-1lcbmhc {
+        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+        border-right: 1px solid rgba(102, 126, 234, 0.2);
+    }
+    
+    /* Metric styling */
+    .metric-card {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        padding: 1.5em;
+        text-align: center;
+        border: 1px solid rgba(102, 126, 234, 0.2);
+        margin: 0.5em 0;
+    }
+    
+    .metric-value {
+        font-size: 2em;
+        font-weight: bold;
+        color: #667eea;
+        margin-bottom: 0.5em;
+    }
+    
+    .metric-label {
+        color: #b8c5d6;
+        font-size: 0.9em;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    /* Animation for results */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .fade-in-up {
+        animation: fadeInUp 0.6s ease-out;
+    }
+    
+    /* Hide Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #1a1a2e;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: #667eea;
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #764ba2;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Load or train model
 MODEL_FILE = 'house_price_model.pkl'
@@ -47,9 +224,9 @@ def load_and_train_model():
 
     # Train multiple models
     models = {
-        'RandomForest': RandomForestRegressor(n_estimators=100, random_state=42),
+        'RandomForest': RandomForestRegressor(n_estimators=100, random_state=42, min_samples_leaf=1, max_features=None),
         'LinearRegression': LinearRegression(),
-        'DecisionTree': DecisionTreeRegressor(random_state=42)
+        'DecisionTree': DecisionTreeRegressor(random_state=42, ccp_alpha=0.0)
     }
 
     best_model = None
@@ -116,352 +293,207 @@ def load_model():
 # Load model on startup
 model_data = load_model()
 
-@app.route('/')
-def home():
-    """Serve the main HTML page"""
-    html_template = """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>House Price Predictor</title>
-        <style>
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
+# Sidebar
+with st.sidebar:
+    st.markdown("""
+    <div style="text-align: center; padding: 1em;">
+        <h2 style="color: #667eea; margin-bottom: 0.5em;">📊 Model Insights</h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Model metrics
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-value">{model_data['model_name'][:3]}</div>
+        <div class="metric-label">Best Model</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-value">{model_data['r2_score']*100:.1f}%</div>
+        <div class="metric-label">Accuracy</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Retrain button in sidebar
+    if st.button("🔄 Retrain Model", key="sidebar_retrain"):
+        with st.spinner("Retraining model..."):
+            try:
+                model_data = load_and_train_model()
+                st.success("✅ Model retrained successfully!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error retraining model: {str(e)}")
+    
+    st.markdown("---")
+    
+    # About section
+    st.markdown("""
+    <div style="background: rgba(255,255,255,0.05); padding: 1em; border-radius: 10px; margin-top: 1em;">
+        <h4 style="color: #667eea; margin-bottom: 0.5em;">🤖 About</h4>
+        <p style="color: #b8c5d6; font-size: 0.9em; line-height: 1.4;">
+        This AI-powered house price predictor uses machine learning to provide accurate property valuations based on location, size, and features.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                min-height: 100vh;
-                padding: 20px;
-            }
+# Main content
+st.markdown("""
+<div class="main-title">🏠 House Price Predictor</div>
+<div class="subtitle">Discover your property's true value with AI-powered precision</div>
+""", unsafe_allow_html=True)
 
-            .container {
-                max-width: 800px;
-                margin: 0 auto;
-                background: white;
-                border-radius: 15px;
-                box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-                overflow: hidden;
-            }
+# Create two columns for the main content
+col1, col2 = st.columns([2, 1])
 
-            .header {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                padding: 30px;
-                text-align: center;
-            }
+with col1:
+    st.markdown("""
+    <div class="prediction-card">
+        <h3 style="color: #667eea; margin-bottom: 1em; text-align: center;">🔮 Property Details</h3>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Input form
+    with st.form("prediction_form"):
+        # Property details section
+        st.markdown("#### 🏢 Property Information")
+        
+        col_a, col_b = st.columns(2)
+        with col_a:
+            property_type = st.selectbox(
+                "Property Type", 
+                ["House", "Flat", "Penthouse", "Studio"],
+                help="Select the type of property"
+            )
+            city = st.selectbox(
+                "City", 
+                ["Islamabad", "Rawalpindi", "Lahore", "Karachi"],
+                help="Select the city where the property is located"
+            )
+        
+        with col_b:
+            bedrooms = st.number_input(
+                "Bedrooms", 
+                min_value=1, 
+                max_value=10, 
+                value=3,
+                help="Number of bedrooms"
+            )
+            baths = st.number_input(
+                "Bathrooms", 
+                min_value=1, 
+                max_value=10, 
+                value=2,
+                help="Number of bathrooms"
+            )
+        
+        # Location and area section
+        st.markdown("#### 📍 Location & Size")
+        
+        location = st.text_input(
+            "Location", 
+            placeholder="e.g., G-10, DHA Defence, Bahria Town",
+            help="Specific location or area within the city"
+        )
+        
+        col_c, col_d = st.columns(2)
+        with col_c:
+            area_in_marla = st.number_input(
+                "Area (Marla)", 
+                min_value=1.0, 
+                value=5.0, 
+                step=0.1,
+                help="Property area in Marla"
+            )
+        with col_d:
+            purpose = st.selectbox(
+                "Purpose", 
+                ["For Sale", "For Rent"],
+                help="Is the property for sale or rent?"
+            )
+        
+        # Submit button
+        submitted = st.form_submit_button("� Predict Price", use_container_width=True)
 
-            .header h1 {
-                font-size: 2.5em;
-                margin-bottom: 10px;
-            }
+with col2:
+    # Results section
+    st.markdown("""
+    <div class="prediction-card">
+        <h3 style="color: #667eea; margin-bottom: 1em; text-align: center;">💰 Prediction Results</h3>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if submitted:
+        try:
+            # Prepare input data
+            input_data = pd.DataFrame([{
+                'property_type': property_type,
+                'location': location,
+                'city': city,
+                'baths': baths,
+                'purpose': purpose,
+                'bedrooms': bedrooms,
+                'Area_in_Marla': area_in_marla
+            }])
 
-            .header p {
-                font-size: 1.1em;
-                opacity: 0.9;
-            }
+            # Encode categorical variables
+            for col in ['property_type', 'location', 'city', 'purpose']:
+                if col in model_data['label_encoders']:
+                    le = model_data['label_encoders'][col]
+                    try:
+                        input_data[col] = le.transform([str(input_data[col].iloc[0])])
+                    except ValueError:
+                        # Handle unknown categories by using the most frequent one
+                        input_data[col] = le.transform([le.classes_[0]])
 
-            .form-container {
-                padding: 40px;
-            }
+            # Make prediction
+            prediction = model_data['model'].predict(input_data[model_data['feature_columns']])[0]
 
-            .form-group {
-                margin-bottom: 25px;
-            }
-
-            .form-group label {
-                display: block;
-                margin-bottom: 8px;
-                font-weight: 600;
-                color: #333;
-                font-size: 1.1em;
-            }
-
-            .form-group input, .form-group select {
-                width: 100%;
-                padding: 12px 15px;
-                border: 2px solid #e1e5e9;
-                border-radius: 8px;
-                font-size: 1em;
-                transition: border-color 0.3s ease;
-            }
-
-            .form-group input:focus, .form-group select:focus {
-                outline: none;
-                border-color: #667eea;
-                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-            }
-
-            .form-row {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 20px;
-            }
-
-            .predict-btn {
-                width: 100%;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                border: none;
-                padding: 15px;
-                font-size: 1.2em;
-                font-weight: 600;
-                border-radius: 8px;
-                cursor: pointer;
-                transition: transform 0.3s ease;
-            }
-
-            .predict-btn:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-            }
-
-            .result {
-                margin-top: 30px;
-                padding: 20px;
-                background: #f8f9fa;
-                border-radius: 8px;
-                border-left: 4px solid #667eea;
-                display: none;
-            }
-
-            .result.show {
-                display: block;
-                animation: slideIn 0.5s ease;
-            }
-
-            @keyframes slideIn {
-                from { opacity: 0; transform: translateY(20px); }
-                to { opacity: 1; transform: translateY(0); }
-            }
-
-            .price {
-                font-size: 2em;
-                font-weight: bold;
-                color: #667eea;
-                margin-bottom: 10px;
-            }
-
-            .model-info {
-                color: #666;
-                font-size: 0.9em;
-            }
-
-            @media (max-width: 600px) {
-                .form-row {
-                    grid-template-columns: 1fr;
-                }
-
-                .header h1 {
-                    font-size: 2em;
-                }
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>🏠 House Price Predictor</h1>
-                <p>Get accurate price predictions using advanced ML algorithms</p>
-            </div>
-
-            <div class="form-container">
-                <form id="predictionForm">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="property_type">Property Type:</label>
-                            <select id="property_type" name="property_type" required>
-                                <option value="">Select Type</option>
-                                <option value="House">House</option>
-                                <option value="Flat">Flat</option>
-                                <option value="Penthouse">Penthouse</option>
-                                <option value="Studio">Studio</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="city">City:</label>
-                            <select id="city" name="city" required>
-                                <option value="">Select City</option>
-                                <option value="Islamabad">Islamabad</option>
-                                <option value="Rawalpindi">Rawalpindi</option>
-                                <option value="Lahore">Lahore</option>
-                                <option value="Karachi">Karachi</option>
-                            </select>
-                        </div>
+            # Display result with animation
+            st.markdown(f"""
+            <div class="fade-in-up">
+                <div style="text-align: center; margin: 2em 0;">
+                    <div style="font-size: 3em; font-weight: bold; color: #667eea; margin-bottom: 0.5em;">
+                        PKR {prediction:,.0f}
                     </div>
-
-                    <div class="form-group">
-                        <label for="location">Location:</label>
-                        <input type="text" id="location" name="location" placeholder="e.g., G-10, DHA Defence" required>
+                    <div style="color: #b8c5d6; font-size: 1.1em;">
+                        Estimated Property Value
                     </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="bedrooms">Bedrooms:</label>
-                            <input type="number" id="bedrooms" name="bedrooms" min="1" max="10" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="baths">Bathrooms:</label>
-                            <input type="number" id="baths" name="baths" min="1" max="10" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="Area_in_Marla">Area (Marla):</label>
-                            <input type="number" id="Area_in_Marla" name="Area_in_Marla" step="0.1" min="1" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="purpose">Purpose:</label>
-                            <select id="purpose" name="purpose" required>
-                                <option value="">Select Purpose</option>
-                                <option value="For Sale">For Sale</option>
-                                <option value="For Rent">For Rent</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="predict-btn">🔮 Predict Price</button>
-                </form>
-
-                <div id="result" class="result">
-                    <div class="price" id="predicted-price"></div>
-                    <div class="model-info">
-                        Model: <span id="model-name"></span> |
-                        Accuracy: <span id="model-accuracy"></span>
+                </div>
+                
+                <div style="background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 10px; padding: 1em; margin-top: 1em;">
+                    <div style="color: #b8c5d6; font-size: 0.9em;">
+                        <strong>Model:</strong> {model_data['model_name']}<br>
+                        <strong>Accuracy:</strong> {(model_data['r2_score'] * 100):.1f}%
                     </div>
                 </div>
             </div>
+            """, unsafe_allow_html=True)
+            
+            # Success message
+            st.success("✅ Prediction completed successfully!")
+
+        except Exception as e:
+            st.error(f"❌ Error making prediction: {str(e)}")
+    else:
+        # Placeholder when no prediction is made
+        st.markdown("""
+        <div style="text-align: center; padding: 3em 1em; color: #666;">
+            <div style="font-size: 4em; margin-bottom: 1em;">🔮</div>
+            <div style="font-size: 1.2em; color: #b8c5d6;">
+                Fill in the property details and click "Predict Price" to get started
+            </div>
         </div>
+        """, unsafe_allow_html=True)
 
-        <script>
-            document.getElementById('predictionForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-
-                const formData = new FormData(this);
-                const data = Object.fromEntries(formData.entries());
-
-                // Convert numeric fields
-                data.bedrooms = parseInt(data.bedrooms);
-                data.baths = parseInt(data.baths);
-                data.Area_in_Marla = parseFloat(data.Area_in_Marla);
-
-                try {
-                    const response = await fetch('/predict', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(data)
-                    });
-
-                    const result = await response.json();
-
-                    if (result.success) {
-                        document.getElementById('predicted-price').textContent =
-                            `PKR ${result.predicted_price.toLocaleString()}`;
-                        document.getElementById('model-name').textContent = result.model_name;
-                        document.getElementById('model-accuracy').textContent =
-                            `${(result.model_accuracy * 100).toFixed(1)}%`;
-                        document.getElementById('result').classList.add('show');
-                    } else {
-                        alert('Error: ' + result.error);
-                    }
-                } catch (error) {
-                    alert('Error making prediction: ' + error.message);
-                }
-            });
-        </script>
-    </body>
-    </html>
-    """
-    return render_template_string(html_template)
-
-@app.route('/health')
-def health():
-    """Health check endpoint for Docker"""
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': pd.Timestamp.now().isoformat(),
-        'model_loaded': model_data is not None,
-        'model_name': model_data.get('model_name', 'Unknown') if model_data else 'None'
-    })
-
-@app.route('/predict', methods=['POST'])
-def predict():
-    """Handle prediction requests"""
-    try:
-        # Validate JSON
-        if not request.is_json:
-            return jsonify({
-                'success': False,
-                'error': 'Content-Type must be application/json'
-            }), 400
-
-        data = request.get_json()
-
-        if data is None:
-            return jsonify({
-                'success': False,
-                'error': 'Invalid JSON data'
-            }), 400
-
-        # Create input dataframe
-        input_data = pd.DataFrame([data])
-
-        # Encode categorical variables
-        for col in ['property_type', 'location', 'city', 'purpose']:
-            if col in model_data['label_encoders']:
-                le = model_data['label_encoders'][col]
-                try:
-                    input_data[col] = le.transform([str(data[col])])
-                except ValueError:
-                    # Handle unknown categories by using the most frequent one
-                    input_data[col] = le.transform([le.classes_[0]])
-
-        # Make prediction
-        prediction = model_data['model'].predict(input_data[model_data['feature_columns']])[0]
-
-        return jsonify({
-            'success': True,
-            'predicted_price': float(prediction),
-            'model_name': model_data['model_name'],
-            'model_accuracy': float(model_data['r2_score'])
-        })
-
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        })
-
-@app.route('/retrain', methods=['POST'])
-def retrain():
-    """Retrain the model with fresh data"""
-    try:
-        global model_data
-        model_data = load_and_train_model()
-        return jsonify({
-            'success': True,
-            'message': 'Model retrained successfully',
-            'model_name': model_data['model_name'],
-            'accuracy': float(model_data['r2_score'])
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        })
-
-if __name__ == '__main__':
-    print("Starting House Price Prediction App...")
-    print("Visit http://localhost:5000 to use the application")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+# Footer
+st.markdown("---")
+st.markdown("""
+<div style="text-align: center; padding: 2em; color: #666;">
+    <p>Built with ❤️ using Streamlit & Machine Learning</p>
+    <p style="font-size: 0.8em;">© 2025 House Price Predictor</p>
+</div>
+""", unsafe_allow_html=True)
